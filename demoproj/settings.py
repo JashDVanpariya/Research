@@ -25,9 +25,11 @@ SECRET_KEY = 'django-insecure-u9$p(r*6i_g4atjk(k%)sp7*s-6g@m5jxwe@6c48ciu%_t&bf*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+import os
 
-CSRF_TRUSTED_ORIGINS =["https://83226dade9d64fecbfb8782ef8847e8d.vfs.cloud9.us-east-1.amazonaws.com"]
+ALLOWED_HOSTS = ['34.76.8.130', 'localhost', '127.0.0.1', '35.205.194.162']
+
+
 # Application definition
 
 # Application definition
