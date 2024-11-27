@@ -14,6 +14,7 @@ USER jenkins
 # Expose the Jenkins web UI port and agent port
 EXPOSE 8080
 EXPOSE 50000# Use the official Jenkins LTS image as the base
+
 FROM jenkins/jenkins:lts                         
 
 # Skip the setup wizard
@@ -47,4 +48,4 @@ ENV JENKINS_GROUP jenkins
 
 # Run the Jenkins containerUN /usr/local/bin/install-plugins.sh < /var/jenkins_home/plugins.txt
 # Install plugins
-RUN /usr/local/bin/install-plugins.sh < /var/jenkins_home/plugins.txt
+RUN /usr/local/bin/install-plugins.sh < /var/jenkins_home/plugins.txt            
