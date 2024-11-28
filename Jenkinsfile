@@ -1,4 +1,12 @@
-pipeline {
+stage('Verify Deployment') {
+    steps {
+        script {
+            sh "kubectl get deployments"
+            sh "kubectl get pods"
+            sh "kubectl get svc"
+        }
+    }
+}pipeline {
     agent any
     environment {
         PROJECT_ID = 'gold-circlet-439215-k9'
@@ -103,3 +111,4 @@ pipeline {
         }
     }
 }
+         
