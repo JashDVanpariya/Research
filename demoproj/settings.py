@@ -27,7 +27,7 @@ DEBUG = True
 
 import os
 
-ALLOWED_HOSTS = ['34.76.8.130', 'localhost', '127.0.0.1', '35.205.194.162']
+ALLOWED_HOSTS = ['34.76.8.130', 'localhost', '127.0.0.1', '34.79.42.188']
 
 
 # Application definition

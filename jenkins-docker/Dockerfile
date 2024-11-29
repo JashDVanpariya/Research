@@ -1,3 +1,4 @@
+
 # Use the official Jenkins LTS image as the base
 FROM jenkins/jenkins:lts
 
@@ -13,7 +14,7 @@ USER jenkins
 
 # Expose the Jenkins web UI port and agent port
 EXPOSE 8080
-EXPOSE 50000# Use the official Jenkins LTS image as the base
+
 
 FROM jenkins/jenkins:lts                         
 
