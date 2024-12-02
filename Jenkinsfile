@@ -30,6 +30,18 @@ pipeline {
                 '''
             }
         }
+        stage('Install Google Cloud SDK') {
+            steps {
+                sh '''
+                echo "Installing Google Cloud SDK..."
+                curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-432.0.0-linux-x86_64.tar.gz
+                tar -xvzf google-cloud-sdk-432.0.0-linux-x86_64.tar.gz
+                ./google-cloud-sdk/install.sh
+                export PATH=$PATH:$(pwd)/google-cloud-sdk/bin
+                gcloud version
+                '''
+            }
+        }
         stage('Authenticate with GKE') {
             steps {
                 script {
@@ -96,7 +108,6 @@ pipeline {
         }
         failure {
             echo "Pipeline failed!"
-        }        
+        }
     }
 }
-     
