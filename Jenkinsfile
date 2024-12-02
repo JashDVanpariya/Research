@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'google/cloud-sdk:latest' // Use a Docker image with gcloud and kubectl pre-installed
+            args '-u root:root' // Run as root to allow installing additional tools if needed
+        }
+    }
     environment {
         DOCKER_IMAGE = 'sledgy/webapp'
         IMAGE_TAG = 'latest'
@@ -9,37 +14,12 @@ pipeline {
         GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
         GKE_DEPLOYMENT_NAME = 'my-app'
         EKS_DEPLOYMENT_NAME = 'webapp'
-        PATH = "${env.HOME}/bin:${env.PATH}"
+        PATH = "/google-cloud-sdk/bin:${env.PATH}"
     }
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
-            }
-        }
-        stage('Install kubectl') {
-            steps {
-                sh '''
-                echo "Installing kubectl..."
-                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                chmod +x kubectl
-                mkdir -p $HOME/bin
-                mv kubectl $HOME/bin/
-                echo $PATH
-                kubectl version --client
-                '''
-            }
-        }
-        stage('Install Google Cloud SDK') {
-            steps {
-                sh '''
-                echo "Installing Google Cloud SDK..."
-                curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-432.0.0-linux-x86_64.tar.gz
-                tar -xvzf google-cloud-sdk-432.0.0-linux-x86_64.tar.gz
-                ./google-cloud-sdk/install.sh
-                export PATH=$PATH:$(pwd)/google-cloud-sdk/bin
-                gcloud version
-                '''
             }
         }
         stage('Authenticate with GKE') {
