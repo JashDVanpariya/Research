@@ -2,6 +2,7 @@ pipeline {
     agent any
     environment {
         DOCKER_IMAGE = 'sledgy/webapp'
+        IMAGE_TAG = 'latest'  // Specify the prebuilt image tag (e.g., latest or specific version)
         GKE_CONTEXT = 'gke_gold-circlet-439215-k9_europe-west1-b_gke-cluster'
         EKS_CONTEXT = 'arn:aws:eks:eu-west-1:920373010296:cluster/aws-cluster'
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
@@ -10,71 +11,47 @@ pipeline {
         EKS_DEPLOYMENT_NAME = 'webapp'
     }
     stages {
-        stage('Checkout') {  // Correctly added braces for the stage
+        stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
-            }
-        }
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    def startTime = System.currentTimeMillis()
-                    echo "Building Docker image..."
-                    docker.build("${DOCKER_IMAGE}:${env.BUILD_NUMBER}", '.')
-                    def endTime = System.currentTimeMillis()
-                    def duration = (endTime - startTime) / 1000
-                    echo "Docker image build time: ${duration} seconds"
-                }
             }
         }
         stage('Push Docker Image') {
             steps {
                 script {
-                    echo "Pushing Docker image to Docker Hub..."
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-creds') {
-                        docker.image("${DOCKER_IMAGE}:${env.BUILD_NUMBER}").push()
-                        docker.image("${DOCKER_IMAGE}:${env.BUILD_NUMBER}").push('latest')
-                    }
+                    echo "Skipping Docker build. Using prebuilt image: ${DOCKER_IMAGE}:${IMAGE_TAG}."
                 }
             }
         }
         stage('Deploy to EKS') {
             steps {
                 script {
-                    def startTime = System.currentTimeMillis()
-                    echo "Deploying to EKS..."
+                    echo "Deploying prebuilt image to EKS..."
                     sh """
                     # Replace image in the EKS deployment file
-                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${env.BUILD_NUMBER}|g' ${EKS_DEPLOYMENT_FILE}
+                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${IMAGE_TAG}|g' ${EKS_DEPLOYMENT_FILE}
                     
                     # Use EKS context and apply the deployment
                     kubectl config use-context ${EKS_CONTEXT}
                     kubectl apply -f ${EKS_DEPLOYMENT_FILE}
                     kubectl rollout status deployment/${EKS_DEPLOYMENT_NAME}
                     """
-                    def endTime = System.currentTimeMillis()
-                    def duration = (endTime - startTime) / 1000
-                    echo "EKS deployment time: ${duration} seconds"
                 }
             }
         }
         stage('Deploy to GKE') {
             steps {
                 script {
-                    def startTime = System.currentTimeMillis()
-                    echo "Deploying to GKE..."
+                    echo "Deploying prebuilt image to GKE..."
                     sh """
                     # Replace image in the GKE deployment file
-                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${env.BUILD_NUMBER}|g' ${GKE_DEPLOYMENT_FILE}
+                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${IMAGE_TAG}|g' ${GKE_DEPLOYMENT_FILE}
                     
                     # Use GKE context and apply the deployment
                     kubectl config use-context ${GKE_CONTEXT}
                     kubectl apply -f ${GKE_DEPLOYMENT_FILE}
                     kubectl rollout status deployment/${GKE_DEPLOYMENT_NAME}
                     """
-                    def endTime = System.currentTimeMillis()
-                    def duration = (endTime - startTime) / 1000
-                    echo "GKE deployment time: ${duration} seconds"
                 }
             }
         }
