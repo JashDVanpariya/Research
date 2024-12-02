@@ -10,7 +10,7 @@ pipeline {
         EKS_DEPLOYMENT_NAME = 'webapp'
     }
     stages {
-        stage('Checkout')          
+        stage('Checkout') {  // Correctly added braces for the stage
             steps {
                 git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
             }
@@ -50,7 +50,7 @@ pipeline {
                     # Use EKS context and apply the deployment
                     kubectl config use-context ${EKS_CONTEXT}
                     kubectl apply -f ${EKS_DEPLOYMENT_FILE}
-                    kubectl rollout status deployment/webapp
+                    kubectl rollout status deployment/${EKS_DEPLOYMENT_NAME}
                     """
                     def endTime = System.currentTimeMillis()
                     def duration = (endTime - startTime) / 1000
@@ -70,7 +70,7 @@ pipeline {
                     # Use GKE context and apply the deployment
                     kubectl config use-context ${GKE_CONTEXT}
                     kubectl apply -f ${GKE_DEPLOYMENT_FILE}
-                    kubectl rollout status deployment/my-app
+                    kubectl rollout status deployment/${GKE_DEPLOYMENT_NAME}
                     """
                     def endTime = System.currentTimeMillis()
                     def duration = (endTime - startTime) / 1000
@@ -83,5 +83,5 @@ pipeline {
         always {
             echo "Pipeline completed successfully!"
         }
-    }                  
-
+    }
+}
