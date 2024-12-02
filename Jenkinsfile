@@ -1,20 +1,11 @@
 pipeline {
-    agent {
-        docker {
-            image 'google/cloud-sdk:latest' // Use a Docker image with gcloud and kubectl pre-installed
-            args '-u root:root' // Run as root to allow installing additional tools if needed
-        }
-    }
+    agent any
     environment {
         DOCKER_IMAGE = 'sledgy/webapp'
-        IMAGE_TAG = 'latest'
-        GKE_CONTEXT = 'gke-cluster'
-        EKS_CONTEXT = 'eks-cluster'
+        GKE_CONTEXT = 'gke_gold-circlet-439215-k9_europe-west1-b_gke-cluster'
+        EKS_CONTEXT = 'arn:aws:eks:eu-west-1:920373010296:cluster/aws-cluster'
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
         GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
-        GKE_DEPLOYMENT_NAME = 'my-app'
-        EKS_DEPLOYMENT_NAME = 'webapp'
-        PATH = "/google-cloud-sdk/bin:${env.PATH}"
     }
     stages {
         stage('Checkout') {
@@ -22,73 +13,67 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
             }
         }
-        stage('Authenticate with GKE') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: 'gcp-credentials', variable: 'GKE_KEY')]) {
-                        sh '''
-                        gcloud version
-                        echo "Authenticating with GKE..."
-                        gcloud auth activate-service-account --key-file=$GKE_KEY
-                        gcloud container clusters get-credentials ${GKE_CONTEXT} --zone=europe-west1-b --project=gold-circlet-439215
-                        '''
-                    }
-                }
-            }
-        }
-        stage('Authenticate with EKS') {
-            steps {
-                withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
-                                 string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')]) {
-                    sh '''
-                    echo "Authenticating with EKS..."
-                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY
-                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_KEY
-                    aws eks update-kubeconfig --region eu-west-1 --name aws-cluster
-                    '''
+                    def startTime = System.currentTimeMillis()
+                    echo "Building Docker image..."
+                    docker.build("${DOCKER_IMAGE}:${env.BUILD_NUMBER}", '.')
+                    def endTime = System.currentTimeMillis()
+                    def duration = (endTime - startTime) / 1000
+                    echo "Docker image build time: ${duration} seconds"
                 }
             }
         }
         stage('Push Docker Image') {
             steps {
                 script {
-                    echo "Skipping Docker build. Using prebuilt image: ${DOCKER_IMAGE}:${IMAGE_TAG}."
+                    echo "Pushing Docker image to Docker Hub..."
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-creds') {
+                        docker.image("${DOCKER_IMAGE}:${env.BUILD_NUMBER}").push()
+                        docker.image("${DOCKER_IMAGE}:${env.BUILD_NUMBER}").push('latest')
+                    }
                 }
             }
         }
         stage('Deploy to EKS') {
             steps {
                 script {
-                    echo "Deploying prebuilt image to EKS..."
+                    def startTime = System.currentTimeMillis()
+                    echo "Deploying to EKS..."
                     sh """
-                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${IMAGE_TAG}|g' ${EKS_DEPLOYMENT_FILE}
+                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${env.BUILD_NUMBER}|g' ${EKS_DEPLOYMENT_FILE}
                     kubectl config use-context ${EKS_CONTEXT}
                     kubectl apply -f ${EKS_DEPLOYMENT_FILE}
-                    kubectl rollout status deployment/${EKS_DEPLOYMENT_NAME} || kubectl describe deployment/${EKS_DEPLOYMENT_NAME}
+                    kubectl rollout status deployment/webapp
                     """
+                    def endTime = System.currentTimeMillis()
+                    def duration = (endTime - startTime) / 1000
+                    echo "EKS deployment time: ${duration} seconds"
                 }
             }
         }
         stage('Deploy to GKE') {
             steps {
                 script {
-                    echo "Deploying prebuilt image to GKE..."
+                    def startTime = System.currentTimeMillis()
+                    echo "Deploying to GKE..."
                     sh """
-                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${IMAGE_TAG}|g' ${GKE_DEPLOYMENT_FILE}
+                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${env.BUILD_NUMBER}|g' ${GKE_DEPLOYMENT_FILE}
                     kubectl config use-context ${GKE_CONTEXT}
                     kubectl apply -f ${GKE_DEPLOYMENT_FILE}
-                    kubectl rollout status deployment/${GKE_DEPLOYMENT_NAME} || kubectl describe deployment/${GKE_DEPLOYMENT_NAME}
+                    kubectl rollout status deployment/my-app
                     """
+                    def endTime = System.currentTimeMillis()
+                    def duration = (endTime - startTime) / 1000
+                    echo "GKE deployment time: ${duration} seconds"
                 }
             }
         }
     }
     post {
         always {
-            echo "Pipeline completed!"
-        }
-        failure {
-            echo "Pipeline failed!"
+            echo "Pipeline completed successfully!"
         }
     }
 }
