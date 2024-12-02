@@ -1,93 +1,63 @@
 pipeline {
-    agent {
-        docker {
-            image 'google/cloud-sdk:latest' // Use a Docker image with gcloud and kubectl pre-installed
-            args '-u root:root' // Run as root to allow installing additional tools if needed
-        }
-    }
+    agent any
     environment {
-        DOCKER_IMAGE = 'sledgy/webapp'
-        IMAGE_TAG = 'latest'
         GKE_CONTEXT = 'gke-cluster'
         EKS_CONTEXT = 'eks-cluster'
-        EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
-        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
         GKE_DEPLOYMENT_NAME = 'my-app'
         EKS_DEPLOYMENT_NAME = 'webapp'
-        PATH = "/google-cloud-sdk/bin:${env.PATH}"
     }
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
+                echo "Code checked out successfully."
             }
         }
-        stage('Authenticate with GKE') {
+        stage('Build Application') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: 'gcp-credentials', variable: 'GKE_KEY')]) {
-                        sh '''
-                        echo "Authenticating with GKE..."
-                        gcloud auth activate-service-account --key-file=$GKE_KEY
-                        gcloud container clusters get-credentials ${GKE_CONTEXT} --zone=europe-west1-b --project=gold-circlet-439215
-                        '''
-                    }
-                }
-            }
-        }
-        stage('Authenticate with EKS') {
-            steps {
-                withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
-                                 string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')]) {
+                    echo "Simulating application build..."
                     sh '''
-                    echo "Authenticating with EKS..."
-                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY
-                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_KEY
-                    aws eks update-kubeconfig --region eu-west-1 --name aws-cluster
+                    echo "Building application..."
+                    sleep 15 # Simulates a 15-second build time
+                    echo "Build completed."
                     '''
-                }
-            }
-        }
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    echo "Skipping Docker build. Using prebuilt image: ${DOCKER_IMAGE}:${IMAGE_TAG}."
-                }
-            }
-        }
-        stage('Deploy to EKS') {
-            steps {
-                script {
-                    echo "Deploying prebuilt image to EKS..."
-                    sh """
-                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${IMAGE_TAG}|g' ${EKS_DEPLOYMENT_FILE}
-                    kubectl config use-context ${EKS_CONTEXT}
-                    kubectl apply -f ${EKS_DEPLOYMENT_FILE}
-                    kubectl rollout status deployment/${EKS_DEPLOYMENT_NAME} || kubectl describe deployment/${EKS_DEPLOYMENT_NAME}
-                    """
                 }
             }
         }
         stage('Deploy to GKE') {
             steps {
                 script {
-                    echo "Deploying prebuilt image to GKE..."
-                    sh """
-                    sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${IMAGE_TAG}|g' ${GKE_DEPLOYMENT_FILE}
-                    kubectl config use-context ${GKE_CONTEXT}
-                    kubectl apply -f ${GKE_DEPLOYMENT_FILE}
-                    kubectl rollout status deployment/${GKE_DEPLOYMENT_NAME} || kubectl describe deployment/${GKE_DEPLOYMENT_NAME}
-                    """
+                    echo "Simulating deployment to GKE..."
+                    sh '''
+                    echo "Deploying to GKE cluster: ${GKE_CONTEXT}"
+                    sleep 10 # Simulates a 10-second deploy time
+                    echo "Deployment to GKE completed."
+                    '''
                 }
+            }
+        }
+        stage('Deploy to EKS') {
+            steps {
+                script {
+                    echo "Simulating deployment to EKS..."
+                    sh '''
+                    echo "Deploying to EKS cluster: ${EKS_CONTEXT}"
+                    sleep 12 # Simulates a 12-second deploy time
+                    echo "Deployment to EKS completed."
+                    '''
+                }
+            }
+        }
+        stage('Report Success') {
+            steps {
+                echo "Pipeline automation completed successfully!"
             }
         }
     }
     post {
         always {
-            echo "Pipeline completed!"
-        }
-        failure {
-            echo "Pipeline failed!"
+            echo "Pipeline completed."
         }
     }
 }
