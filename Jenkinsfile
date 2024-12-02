@@ -36,7 +36,7 @@ pipeline {
                         def startTime = System.currentTimeMillis()
                         echo "Deploying to GKE..."
                         sh """
-                        sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${GKE_DEPLOYMENT_FILE}
+                        sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${GKE_DEPLOYMENT_FILE}              
                         kubectl apply -f ${GKE_DEPLOYMENT_FILE}
                         kubectl rollout status deployment/my-app
                         """
