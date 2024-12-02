@@ -32,12 +32,15 @@ pipeline {
         }
         stage('Authenticate with GKE') {
             steps {
-                withCredentials([file(credentialsId: 'gcp-credentials', variable: 'GKE_KEY')]) {
-                    sh '''
-                    echo "Authenticating with GKE..."
-                    gcloud auth activate-service-account --key-file=$GKE_KEY
-                    gcloud container clusters get-credentials ${GKE_CONTEXT} --zone=europe-west1-b --project=gold-circlet-439215
-                    '''
+                script {
+                    withCredentials([string(credentialsId: 'gcp-credentials', variable: 'GOOGLE_CREDENTIALS_JSON')]) {
+                        sh '''
+                        echo "Authenticating with GKE..."
+                        echo "$GOOGLE_CREDENTIALS_JSON" > /tmp/gcp-key.json
+                        gcloud auth activate-service-account --key-file=/tmp/gcp-key.json
+                        gcloud container clusters get-credentials ${GKE_CONTEXT} --zone=europe-west1-b --project=gold-circlet-439215
+                        '''
+                    }
                 }
             }
         }
