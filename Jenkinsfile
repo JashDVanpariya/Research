@@ -42,7 +42,10 @@ pipeline {
                     def startTime = System.currentTimeMillis()
                     echo "Deploying to EKS..."
                     sh """
+                    # Replace image in the EKS deployment file
                     sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${env.BUILD_NUMBER}|g' ${EKS_DEPLOYMENT_FILE}
+                    
+                    # Use EKS context and apply the deployment
                     kubectl config use-context ${EKS_CONTEXT}
                     kubectl apply -f ${EKS_DEPLOYMENT_FILE}
                     kubectl rollout status deployment/webapp
@@ -59,7 +62,10 @@ pipeline {
                     def startTime = System.currentTimeMillis()
                     echo "Deploying to GKE..."
                     sh """
+                    # Replace image in the GKE deployment file
                     sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${env.BUILD_NUMBER}|g' ${GKE_DEPLOYMENT_FILE}
+                    
+                    # Use GKE context and apply the deployment
                     kubectl config use-context ${GKE_CONTEXT}
                     kubectl apply -f ${GKE_DEPLOYMENT_FILE}
                     kubectl rollout status deployment/my-app
