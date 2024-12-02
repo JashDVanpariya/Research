@@ -45,7 +45,7 @@ pipeline {
                         echo "GKE deployment time: ${duration} seconds"
                     }
                 }
-            }
+            }        
         }
     }
     post {
