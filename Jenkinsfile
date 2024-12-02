@@ -17,7 +17,7 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
             }
         }
-        stage('Install kubectl') {
+        stage('Install Tools') {
             steps {
                 sh '''
                 echo "Installing kubectl..."
@@ -28,16 +28,22 @@ pipeline {
                 export PATH=/var/jenkins_home/bin:$PATH
                 echo $PATH
                 kubectl version --client
+                
+                echo "Installing AWS CLI..."
+                curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                unzip awscliv2.zip
+                sudo ./aws/install
+                aws --version
                 '''
             }
         }
-        stage('Test kubectl') {
+        stage('Configure Kubernetes Context') {
             steps {
                 sh '''
-                export PATH=/var/jenkins_home/bin:$PATH
-                echo "Verifying kubectl installation..."
-                which kubectl
-                kubectl version --client
+                echo "Configuring Kubernetes context for EKS..."
+                aws eks update-kubeconfig --region eu-west-1 --name aws-cluster
+                kubectl config use-context arn:aws:eks:eu-west-1:920373010296:cluster/aws-cluster
+                kubectl config get-contexts
                 '''
             }
         }
@@ -55,7 +61,6 @@ pipeline {
                     sh '''
                     export PATH=/var/jenkins_home/bin:$PATH
                     sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}:${IMAGE_TAG}|g' ${EKS_DEPLOYMENT_FILE}
-                    kubectl config use-context ${EKS_CONTEXT}
                     kubectl apply -f ${EKS_DEPLOYMENT_FILE}
                     kubectl rollout status deployment/${EKS_DEPLOYMENT_NAME}
                     '''
