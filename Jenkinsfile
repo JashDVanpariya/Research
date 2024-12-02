@@ -9,7 +9,7 @@ pipeline {
         GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
         GKE_DEPLOYMENT_NAME = 'my-app'
         EKS_DEPLOYMENT_NAME = 'webapp'
-        PATH = "${env.HOME}/bin:${env.PATH}"
+        PATH = "${env.HOME}/bin:${env.PATH}" // Ensure kubectl is in the PATH
     }
     stages {
         stage('Checkout') {
@@ -32,17 +32,26 @@ pipeline {
         }
         stage('Authenticate with GKE') {
             steps {
-                sh '''
-                gcloud auth activate-service-account --key-file=/path/to/service-account-key.json
-                gcloud container clusters get-credentials gke-cluster --zone=europe-west1-b --project=gold-circlet-439215
-                '''
+                withCredentials([file(credentialsId: 'gke-service-account-key', variable: 'GKE_KEY')]) {
+                    sh '''
+                    echo "Authenticating with GKE..."
+                    gcloud auth activate-service-account --key-file=$GKE_KEY
+                    gcloud container clusters get-credentials ${GKE_CONTEXT} --zone=europe-west1-b --project=gold-circlet-439215
+                    '''
+                }
             }
         }
         stage('Authenticate with EKS') {
             steps {
-                sh '''
-                aws eks update-kubeconfig --region eu-west-1 --name aws-cluster
-                '''
+                withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
+                                 string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')]) {
+                    sh '''
+                    echo "Authenticating with EKS..."
+                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY
+                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_KEY
+                    aws eks update-kubeconfig --region eu-west-1 --name aws-cluster
+                    '''
+                }
             }
         }
         stage('Push Docker Image') {
@@ -82,6 +91,9 @@ pipeline {
     post {
         always {
             echo "Pipeline completed!"
+        }
+        failure {
+            echo "Pipeline failed!"
         }
     }
 }
