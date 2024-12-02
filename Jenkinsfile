@@ -9,7 +9,7 @@ pipeline {
         GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
         GKE_DEPLOYMENT_NAME = 'my-app'
         EKS_DEPLOYMENT_NAME = 'webapp'
-        PATH = "${env.HOME}/bin:${env.PATH}" // Ensure kubectl is in the PATH
+        PATH = "${env.HOME}/bin:${env.PATH}"
     }
     stages {
         stage('Checkout') {
@@ -32,7 +32,7 @@ pipeline {
         }
         stage('Authenticate with GKE') {
             steps {
-                withCredentials([file(credentialsId: 'gke-service-account-key', variable: 'GKE_KEY')]) {
+                withCredentials([file(credentialsId: 'gcp-credentials', variable: 'GKE_KEY')]) {
                     sh '''
                     echo "Authenticating with GKE..."
                     gcloud auth activate-service-account --key-file=$GKE_KEY
