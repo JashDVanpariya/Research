@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         DOCKER_IMAGE = 'sledgy/webapp'
-        IMAGE_TAG = 'latest'  // Specify the prebuilt image tag (e.g., latest or specific version)
+        IMAGE_TAG = 'latest'  // Specify the prebuilt image tag
         GKE_CONTEXT = 'gke_gold-circlet-439215-k9_europe-west1-b_gke-cluster'
         EKS_CONTEXT = 'arn:aws:eks:eu-west-1:920373010296:cluster/aws-cluster'
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
@@ -14,6 +14,17 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
+            }
+        }
+        stage('Install kubectl') {
+            steps {
+                sh '''
+                echo "Installing kubectl..."
+                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                chmod +x kubectl
+                mv kubectl /usr/local/bin/
+                kubectl version --client
+                '''
             }
         }
         stage('Push Docker Image') {
