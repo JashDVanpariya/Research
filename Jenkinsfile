@@ -10,7 +10,7 @@ pipeline {
         EKS_DEPLOYMENT_NAME = 'webapp'
     }
     stages {
-        stage('Checkout') {
+        stage('Checkout')          
             steps {
                 git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
             }
