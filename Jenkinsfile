@@ -4,6 +4,7 @@ pipeline {
         DOCKER_IMAGE = 'sledgy/webapp:latest'
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
         GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
+        KUBECTL_PATH = 'C:/Users/01/kubectl' // Explicit path to kubectl
     }
     stages {
         stage('Checkout Code') {
@@ -19,8 +20,8 @@ pipeline {
                         echo "Deploying to EKS..."
                         sh """
                         sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${EKS_DEPLOYMENT_FILE}
-                        kubectl apply -f ${EKS_DEPLOYMENT_FILE}
-                        kubectl rollout status deployment/webapp
+                        ${KUBECTL_PATH} apply -f ${EKS_DEPLOYMENT_FILE}
+                        ${KUBECTL_PATH} rollout status deployment/webapp
                         """
                         def endTime = System.currentTimeMillis()
                         def duration = (endTime - startTime) / 1000
@@ -37,8 +38,8 @@ pipeline {
                         echo "Deploying to GKE..."
                         sh """
                         sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${GKE_DEPLOYMENT_FILE}              
-                        kubectl apply -f ${GKE_DEPLOYMENT_FILE}
-                        kubectl rollout status deployment/my-app
+                        ${KUBECTL_PATH} apply -f ${GKE_DEPLOYMENT_FILE}
+                        ${KUBECTL_PATH} rollout status deployment/my-app
                         """
                         def endTime = System.currentTimeMillis()
                         def duration = (endTime - startTime) / 1000
