@@ -27,7 +27,6 @@ pipeline {
                     sh '''
                         curl -LO https://storage.googleapis.com/artifacts.k8s.io/binaries/kubernetes-client-go-auth-gcp/release/latest/gke-gcloud-auth-plugin
                         chmod +x gke-gcloud-auth-plugin
-                        mv gke-gcloud-auth-plugin ${GKE_AUTH_PLUGIN}
                     '''
                 }
             }
