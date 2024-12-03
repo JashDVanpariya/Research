@@ -3,7 +3,8 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'sledgy/webapp:latest'
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
-        KUBECTL_PATH = '/usr/local/bin/kubectl' // Path where kubectl will be installed
+        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
+        KUBECTL_PATH = './kubectl' // Install kubectl in the workspace
     }
     stages {
         stage('Install kubectl') {
@@ -13,7 +14,7 @@ pipeline {
                     sh '''
                         curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.20.5/bin/linux/amd64/kubectl"
                         chmod +x kubectl
-                        sudo mv kubectl /usr/local/bin/kubectl
+                        mv kubectl ${KUBECTL_PATH}
                     '''
                     sh '${KUBECTL_PATH} version --client'
                 }
@@ -38,6 +39,24 @@ pipeline {
                         def endTime = System.currentTimeMillis()
                         def duration = (endTime - startTime) / 1000
                         echo "EKS deployment time: ${duration} seconds"
+                    }
+                }
+            }
+        }
+        stage('Deploy to GKE') {
+            steps {
+                withKubeConfig(credentialsId: 'gke-kubeconfig') {
+                    script {
+                        def startTime = System.currentTimeMillis()
+                        echo "Deploying to GKE..."
+                        sh '''
+                        sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${GKE_DEPLOYMENT_FILE}
+                        ${KUBECTL_PATH} apply -f ${GKE_DEPLOYMENT_FILE}
+                        ${KUBECTL_PATH} rollout status deployment/my-app
+                        '''
+                        def endTime = System.currentTimeMillis()
+                        def duration = (endTime - startTime) / 1000
+                        echo "GKE deployment time: ${duration} seconds"
                     }
                 }
             }
