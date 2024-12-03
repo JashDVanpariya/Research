@@ -22,8 +22,8 @@ pipeline {
                         chmod +x gke-gcloud-auth-plugin
 
                         # Install AWS CLI in a local directory
-                        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                        unzip awscliv2.zip
+                        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+                        unzip -o awscliv2.zip
                         ./aws/install --install-dir ./aws-cli --bin-dir ./aws-cli/bin
                     '''
 
@@ -32,41 +32,44 @@ pipeline {
                 }
             }
         }
+
         stage('Checkout Code') {
             steps {
                 git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
             }
         }
+
         stage('Deploy to EKS') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
+                withCredentials([[ 
+                    $class: 'AmazonWebServicesCredentialsBinding', 
                     credentialsId: 'aws-credentials-id' // Replace with your credentialsId
                 ]]) {
                     script {
                         echo "Configuring AWS CLI and Deploying to EKS..."
                         sh '''
-                        # Configure AWS CLI to access EKS
-                        ${AWS_CLI_PATH} eks update-kubeconfig --region your-region --name your-cluster-name
+                            # Configure AWS CLI to access EKS
+                            ${AWS_CLI_PATH} eks update-kubeconfig --region your-region --name your-cluster-name
 
-                        # Deploy application
-                        sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${EKS_DEPLOYMENT_FILE}
-                        ./kubectl apply -f ${EKS_DEPLOYMENT_FILE}
-                        ./kubectl rollout status deployment/webapp
+                            # Deploy application
+                            sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${EKS_DEPLOYMENT_FILE}
+                            ./kubectl apply -f ${EKS_DEPLOYMENT_FILE}
+                            ./kubectl rollout status deployment/webapp
                         '''
                     }
                 }
             }
         }
+
         stage('Deploy to GKE') {
             steps {
                 withKubeConfig(credentialsId: 'gke-kubeconfig') {
                     script {
                         echo "Deploying to GKE..."
                         sh '''
-                        sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${GKE_DEPLOYMENT_FILE}
-                        ./kubectl apply -f ${GKE_DEPLOYMENT_FILE}
-                        ./kubectl rollout status deployment/my-app
+                            sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${GKE_DEPLOYMENT_FILE}
+                            ./kubectl apply -f ${GKE_DEPLOYMENT_FILE}
+                            ./kubectl rollout status deployment/my-app
                         '''
                     }
                 }
