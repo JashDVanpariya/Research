@@ -2,59 +2,55 @@ pipeline {
     agent any
     environment {
         DOCKER_IMAGE = 'sledgy/webapp:latest'
-        KUBECTL_PATH = './kubectl'
-        GKE_AUTH_PLUGIN = './gke-gcloud-auth-plugin'
-        AWS_REGION = 'us-west-2'
-        EKS_CLUSTER_NAME = 'your-eks-cluster'
+        EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
+        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
     }
     stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
+            }
+        }
         stage('Install Required Tools') {
             steps {
                 script {
-                    echo "Installing required tools..."
+                    echo "Installing kubectl and other tools..."
                     sh '''
                         # Install kubectl
                         curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.20.5/bin/linux/amd64/kubectl"
                         chmod +x kubectl
-
+                        
                         # Install gke-gcloud-auth-plugin
                         curl -LO https://storage.googleapis.com/artifacts.k8s.io/binaries/kubernetes-client-go-auth-gcp/release/latest/gke-gcloud-auth-plugin
                         chmod +x gke-gcloud-auth-plugin
-
-                        # Install gcloud SDK
-                        curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-419.0.0-linux-x86_64.tar.gz
-                        tar -xvf google-cloud-cli-419.0.0-linux-x86_64.tar.gz
-                        ./google-cloud-sdk/install.sh --quiet
-
-                        # Install AWS CLI
-                        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                        unzip awscliv2.zip
-                        ./aws/install
                     '''
                 }
             }
         }
         stage('Deploy to EKS') {
             steps {
-                script {
-                    echo "Configuring AWS CLI..."
-                    sh '''
-                        aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${AWS_REGION}
-                        ./kubectl apply -f eks-deployment.yaml
+                withKubeConfig(credentialsId: 'eks-kubeconfig') {
+                    script {
+                        echo "Deploying to EKS..."
+                        sh '''
+                        ./kubectl apply -f ${EKS_DEPLOYMENT_FILE}
                         ./kubectl rollout status deployment/webapp
-                    '''
+                        '''
+                    }
                 }
             }
         }
         stage('Deploy to GKE') {
             steps {
-                script {
-                    echo "Deploying to GKE..."
-                    sh '''
-                        export PATH=$PATH:$(pwd)
-                        ./kubectl apply -f gke-deployment.yaml
+                withKubeConfig(credentialsId: 'gke-kubeconfig') {
+                    script {
+                        echo "Deploying to GKE..."
+                        sh '''
+                        export PATH=$PATH:$(pwd) # Add local directory to PATH
+                        ./kubectl apply -f ${GKE_DEPLOYMENT_FILE}
                         ./kubectl rollout status deployment/my-app
-                    '''
+                        '''
+                    }
                 }
             }
         }
