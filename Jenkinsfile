@@ -4,7 +4,7 @@ pipeline {
         DOCKER_IMAGE = 'sledgy/webapp:latest'
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
         GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
-        KUBECTL_PATH = './kubectl' // Install kubectl in the workspace
+        KUBECTL_PATH = './kubectl' // Path to the locally installed kubectl
     }
     stages {
         stage('Install kubectl') {
@@ -14,7 +14,6 @@ pipeline {
                     sh '''
                         curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.20.5/bin/linux/amd64/kubectl"
                         chmod +x kubectl
-                        mv kubectl ${KUBECTL_PATH}
                     '''
                     sh '${KUBECTL_PATH} version --client'
                 }
