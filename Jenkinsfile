@@ -5,6 +5,7 @@ pipeline {
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
         GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
         KUBECTL_PATH = './kubectl'
+        AWS_CLI_PATH = './aws-cli/bin/aws'
     }
     stages {
         stage('Install Required Tools') {
@@ -20,11 +21,14 @@ pipeline {
                         curl -LO https://storage.googleapis.com/artifacts.k8s.io/binaries/kubernetes-client-go-auth-gcp/release/latest/gke-gcloud-auth-plugin
                         chmod +x gke-gcloud-auth-plugin
 
-                        # Install AWS CLI
+                        # Install AWS CLI in a local directory
                         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
                         unzip awscliv2.zip
-                        ./aws/install
+                        ./aws/install --install-dir ./aws-cli --bin-dir ./aws-cli/bin
                     '''
+
+                    echo "Verifying AWS CLI installation..."
+                    sh './aws-cli/bin/aws --version'
                 }
             }
         }
@@ -37,23 +41,19 @@ pipeline {
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-credentials' // Replace with your credentialsId
+                    credentialsId: 'aws-credentials-id' // Replace with your credentialsId
                 ]]) {
                     script {
-                        def startTime = System.currentTimeMillis()
                         echo "Configuring AWS CLI and Deploying to EKS..."
                         sh '''
                         # Configure AWS CLI to access EKS
-                        aws eks update-kubeconfig --region your-region --name your-cluster-name
+                        ${AWS_CLI_PATH} eks update-kubeconfig --region your-region --name your-cluster-name
 
                         # Deploy application
                         sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${EKS_DEPLOYMENT_FILE}
                         ./kubectl apply -f ${EKS_DEPLOYMENT_FILE}
                         ./kubectl rollout status deployment/webapp
                         '''
-                        def endTime = System.currentTimeMillis()
-                        def duration = (endTime - startTime) / 1000
-                        echo "EKS deployment time: ${duration} seconds"
                     }
                 }
             }
@@ -62,16 +62,12 @@ pipeline {
             steps {
                 withKubeConfig(credentialsId: 'gke-kubeconfig') {
                     script {
-                        def startTime = System.currentTimeMillis()
                         echo "Deploying to GKE..."
                         sh '''
                         sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${GKE_DEPLOYMENT_FILE}
                         ./kubectl apply -f ${GKE_DEPLOYMENT_FILE}
                         ./kubectl rollout status deployment/my-app
                         '''
-                        def endTime = System.currentTimeMillis()
-                        def duration = (endTime - startTime) / 1000
-                        echo "GKE deployment time: ${duration} seconds"
                     }
                 }
             }
