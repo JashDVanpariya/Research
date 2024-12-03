@@ -4,7 +4,8 @@ pipeline {
         DOCKER_IMAGE = 'sledgy/webapp:latest'
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
         GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
-        KUBECTL_PATH = './kubectl' // Path to locally installed kubectl
+        KUBECTL_PATH = './kubectl' // Path to the locally installed kubectl
+        GKE_AUTH_PLUGIN = './gke-gcloud-auth-plugin' // Path to the locally installed GKE Auth Plugin
     }
     stages {
         stage('Install kubectl') {
@@ -26,7 +27,7 @@ pipeline {
                     sh '''
                         curl -LO https://storage.googleapis.com/artifacts.k8s.io/binaries/kubernetes-client-go-auth-gcp/release/latest/gke-gcloud-auth-plugin
                         chmod +x gke-gcloud-auth-plugin
-                        mv gke-gcloud-auth-plugin /usr/local/bin/
+                        mv gke-gcloud-auth-plugin ${GKE_AUTH_PLUGIN}
                     '''
                 }
             }
@@ -61,6 +62,7 @@ pipeline {
                         def startTime = System.currentTimeMillis()
                         echo "Deploying to GKE..."
                         sh '''
+                        export PATH=$PATH:$(pwd) # Add local directory to PATH
                         sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${GKE_DEPLOYMENT_FILE}
                         ${KUBECTL_PATH} apply -f ${GKE_DEPLOYMENT_FILE}
                         ${KUBECTL_PATH} rollout status deployment/my-app
