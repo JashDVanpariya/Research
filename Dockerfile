@@ -18,3 +18,4 @@ EXPOSE 8000
 
 # Run the application using Gunicorn (you can modify the number of workers as needed)
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "demoproj.wsgi:application"]
+                    
