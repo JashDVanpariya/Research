@@ -40,7 +40,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'KUBE_CONFIG', variable: 'KUBECONFIG_CONTENT')]) {
                     sh '''
-                      echo "$KUBECONFIG_CONTENT" > kubeconfig
+                      echo "$KUBECONFIG_CONTENT" > kubeconfig            
                       export KUBECONFIG=`pwd`/kubeconfig
                       kubectl config get-contexts
                     '''
