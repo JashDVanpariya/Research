@@ -38,7 +38,7 @@ pipeline {
         }
         stage('Setup Kubeconfig') {
             steps {
-                withCredentials([string(credentialsId: 'KUBECONFIG', variable: 'KUBECONFIG_CONTENT')]) {
+                withCredentials([string(credentialsId: 'KUBE_CONFIG', variable: 'KUBECONFIG_CONTENT')]) {
                     sh '''
                       echo "$KUBECONFIG_CONTENT" > kubeconfig
                       export KUBECONFIG=`pwd`/kubeconfig
