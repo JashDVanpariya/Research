@@ -28,7 +28,7 @@ DEBUG = True
 import os
 
 ALLOWED_HOSTS = ['*']
-
+       
 
 
 # Application definition
