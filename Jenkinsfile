@@ -15,8 +15,8 @@ pipeline {
         stage('Install kubectl') {
             steps {
                 sh '''
-                echo "Installing kubectl..."         
-                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"        
+                echo "Installing kubectl..."
+                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
                 mkdir -p /var/jenkins_home/bin
                 mv kubectl /var/jenkins_home/bin/
@@ -36,11 +36,23 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Setup Kubeconfig') {
+            steps {
+                withCredentials([string(credentialsId: 'MY_KUBECONFIG', variable: 'KUBECONFIG_CONTENT')]) {
+                    sh '''
+                      echo "$KUBECONFIG_CONTENT" > kubeconfig
+                      export KUBECONFIG=`pwd`/kubeconfig
+                      kubectl config get-contexts
+                    '''
+                }
+            }
+        }
         stage('Deploy to EKS') {
             steps {
                 script {
                     echo "Deploying to EKS..."
                     sh '''
+                    export KUBECONFIG=`pwd`/kubeconfig
                     kubectl config use-context ${EKS_CONTEXT}
                     kubectl apply -f ${EKS_DEPLOYMENT_FILE}
                     kubectl rollout status deployment/webapp --timeout=60s || kubectl describe deployment/webapp
@@ -53,6 +65,7 @@ pipeline {
                 script {
                     echo "Deploying to GKE..."
                     sh '''
+                    export KUBECONFIG=`pwd`/kubeconfig
                     kubectl config use-context ${GKE_CONTEXT}
                     kubectl apply -f ${GKE_DEPLOYMENT_FILE}
                     kubectl rollout status deployment/my-app --timeout=60s || kubectl describe deployment/my-app
@@ -72,7 +85,7 @@ pipeline {
     }
     post {
         always {
-            echo "Pipeline Completed!"      
+            echo "Pipeline Completed!"
         }
     }
 }
