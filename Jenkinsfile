@@ -3,18 +3,18 @@ pipeline {
     
     environment {
         // Docker and Git Configuration
-        DOCKER_REGISTRY = 'your-dockerhub-username'
-        DOCKER_IMAGE = 'your-app-name'
-        GIT_REPO = 'your-git-repo-url'
+        DOCKER_REGISTRY = 'sledgy'
+        DOCKER_IMAGE = 'webapp:latest'
+        GIT_REPO = 'https://github.com/JashDVanpariya/Research.git'
         
         // EKS Cluster Configuration
-        EKS_CLUSTER_NAME = 'your-eks-cluster-name'
-        EKS_REGION = 'us-west-2'
+        EKS_CLUSTER_NAME = 'eks-cluster'
+        EKS_REGION = 'eu-west-1'
         
         // GKE Cluster Configuration
-        GKE_CLUSTER_NAME = 'your-gke-cluster-name'
-        GKE_ZONE = 'us-central1-a'
-        GKE_PROJECT = 'your-gcp-project-id'
+        GKE_CLUSTER_NAME = 'gke-cluster'
+        GKE_ZONE = 'europe-west1-b'
+        GKE_PROJECT = 'gold-circlet-439215-k9'
     }
     
     stages {
