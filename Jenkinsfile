@@ -24,7 +24,7 @@ pipeline {
                         # Install AWS CLI in a local directory
                         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
                         unzip -qo awscliv2.zip
-                        ./aws/install --install-dir ./aws-cli --bin-dir ./aws-cli/bin --silent
+                        ./aws/install --install-dir ./aws-cli --bin-dir ./aws-cli/bin
                     '''
 
                     echo "Verifying AWS CLI installation..."
