@@ -1,130 +1,145 @@
 pipeline {
     agent any
+    
     environment {
-        // Docker image from Docker Hub
-        DOCKER_IMAGE = 'sledgy/webapp:latest'
+        // Docker and Git Configuration
+        DOCKER_REGISTRY = 'your-dockerhub-username'
+        DOCKER_IMAGE = 'your-app-name'
+        GIT_REPO = 'your-git-repo-url'
         
-        // Kubernetes contexts as defined in kubeconfig
-        EKS_CONTEXT = 'arn:aws:eks:eu-west-1:920373010296:cluster/eks-cluster'
-        GKE_CONTEXT = 'gke_gold-circlet-439215-k9_europe-west1-b_gke-cluster'
+        // EKS Cluster Configuration
+        EKS_CLUSTER_NAME = 'your-eks-cluster-name'
+        EKS_REGION = 'us-west-2'
         
-        // Deployment YAML files
-        EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
-        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
+        // GKE Cluster Configuration
+        GKE_CLUSTER_NAME = 'your-gke-cluster-name'
+        GKE_ZONE = 'us-central1-a'
+        GKE_PROJECT = 'your-gcp-project-id'
     }
-    triggers {
-        pollSCM('* * * * *') // Poll SCM every minute
-    }
+    
     stages {
-        stage('Start Timer') {
+        stage('Checkout') {
             steps {
                 script {
-                    env.START_TIME = System.currentTimeMillis()
+                    env.CHECKOUT_START = System.currentTimeMillis()
+                }
+                git branch: 'main', url: "${GIT_REPO}"
+                script {
+                    env.CHECKOUT_END = System.currentTimeMillis()
+                    env.CHECKOUT_TIME = (env.CHECKOUT_END as long) - (env.CHECKOUT_START as long)
                 }
             }
         }
-        stage('Checkout Code') {
+        
+        stage('Build Docker Image') {
             steps {
-                checkout scm
-            }
-        }
-        stage('Install AWS CLI and kubectl') {
-            steps {
-                sh '''
-                    echo "Installing AWS CLI..."
-                    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                    unzip -o awscliv2.zip
-                    ./aws/install --install-dir=$HOME/aws-cli --binary-dir=$HOME/bin
-                    export PATH=$HOME/bin:$PATH
-                    aws --version
-
-                    echo "Installing kubectl..."
-                    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                    chmod +x kubectl
-                    mv kubectl $HOME/bin/
-                    export PATH=$HOME/bin:$PATH
-                    kubectl version --client
-                '''
-            }
-        }
-        stage('Setup Kubeconfig and AWS Credentials') {
-            steps {
-                withCredentials([
-                    file(credentialsId: 'MY_KUBECONFIG_FILE', variable: 'KUBECONFIG_FILE'),
-                    usernamePassword(credentialsId: 'AWS_CREDENTIALS', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                        # Configure AWS CLI with credentials
-                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-                        aws configure set default.region eu-west-1
-
-                        # Copy kubeconfig to workspace
-                        cp $KUBECONFIG_FILE kubeconfig
-
-                        # Verify kubeconfig
-                        kubectl --kubeconfig=kubeconfig config get-contexts
-                    '''
+                script {
+                    env.BUILD_START = System.currentTimeMillis()
+                    dockerImage = docker.build("${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${env.BUILD_NUMBER}")
+                    env.BUILD_END = System.currentTimeMillis()
+                    env.BUILD_TIME = (env.BUILD_END as long) - (env.BUILD_START as long)
                 }
             }
         }
+        
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    env.PUSH_START = System.currentTimeMillis()
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-credentials') {
+                        dockerImage.push()
+                        dockerImage.push('latest')
+                    }
+                    env.PUSH_END = System.currentTimeMillis()
+                    env.PUSH_TIME = (env.PUSH_END as long) - (env.PUSH_START as long)
+                }
+            }
+        }
+        
         stage('Deploy to EKS') {
             steps {
                 script {
-                    echo "Deploying to EKS..."
-                    sh '''
-                        START_DEPLOY_EKS=$(date +%s)
+                    env.EKS_DEPLOY_START = System.currentTimeMillis()
+                    withAWS(credentials: 'aws-credentials', region: "${EKS_REGION}") {
+                        // Update EKS kubeconfig
+                        sh "aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${EKS_REGION}"
                         
-                        # Switch to EKS context
-                        kubectl --kubeconfig=kubeconfig config use-context ${EKS_CONTEXT}
-                        
-                        # Update the deployment with the new image
-                        kubectl --kubeconfig=kubeconfig set image deployment/webapp webapp=${DOCKER_IMAGE} --record
-                        
-                        # Monitor the rollout status
-                        kubectl --kubeconfig=kubeconfig rollout status deployment/webapp --timeout=60s || kubectl --kubeconfig=kubeconfig describe deployment/webapp
-                        
-                        END_DEPLOY_EKS=$(date +%s)
-                        echo "EKS Deployment Time: $((END_DEPLOY_EKS - START_DEPLOY_EKS)) seconds"
-                    '''
+                        // Deploy using EKS-specific deployment file
+                        sh """
+                            kubectl apply -f eks-deployment.yaml
+                            kubectl set image deployment/your-eks-deployment ${DOCKER_IMAGE}=${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${env.BUILD_NUMBER}
+                            kubectl rollout status deployment/your-eks-deployment
+                        """
+                    }
+                    env.EKS_DEPLOY_END = System.currentTimeMillis()
+                    env.EKS_DEPLOY_TIME = (env.EKS_DEPLOY_END as long) - (env.EKS_DEPLOY_START as long)
                 }
             }
         }
+        
         stage('Deploy to GKE') {
             steps {
                 script {
-                    echo "Deploying to GKE..."
-                    sh '''
-                        START_DEPLOY_GKE=$(date +%s)
+                    env.GKE_DEPLOY_START = System.currentTimeMillis()
+                    withCredentials([file(credentialsId: 'gke-credentials', variable: 'GKE_KEYFILE')]) {
+                        // Authenticate with GKE
+                        sh """
+                            gcloud auth activate-service-account --key-file=${GKE_KEYFILE}
+                            gcloud config set project ${GKE_PROJECT}
+                            gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_ZONE}
+                        """
                         
-                        # Switch to GKE context
-                        kubectl --kubeconfig=kubeconfig config use-context ${GKE_CONTEXT}
-                        
-                        # Update the deployment with the new image
-                        kubectl --kubeconfig=kubeconfig set image deployment/my-app my-app=${DOCKER_IMAGE} --record
-                        
-                        # Monitor the rollout status
-                        kubectl --kubeconfig=kubeconfig rollout status deployment/my-app --timeout=60s || kubectl --kubeconfig=kubeconfig describe deployment/my-app
-                        
-                        END_DEPLOY_GKE=$(date +%s)
-                        echo "GKE Deployment Time: $((END_DEPLOY_GKE - START_DEPLOY_GKE)) seconds"
-                    '''
-                }
-            }
-        }
-        stage('End Timer and Calculate Total Time') {
-            steps {
-                script {
-                    def END_TIME = System.currentTimeMillis()
-                    def TOTAL_TIME = (END_TIME - START_TIME) / 1000
-                    echo "Total Build and Deployment Time: ${TOTAL_TIME} seconds"
+                        // Deploy using GKE-specific deployment file
+                        sh """
+                            kubectl apply -f gke-deployment.yaml
+                            kubectl set image deployment/your-gke-deployment ${DOCKER_IMAGE}=${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${env.BUILD_NUMBER}
+                            kubectl rollout status deployment/your-gke-deployment
+                        """
+                    }
+                    env.GKE_DEPLOY_END = System.currentTimeMillis()
+                    env.GKE_DEPLOY_TIME = (env.GKE_DEPLOY_END as long) - (env.GKE_DEPLOY_START as long)
                 }
             }
         }
     }
+    
     post {
+        success {
+            script {
+                // Calculate total pipeline time
+                env.TOTAL_PIPELINE_TIME = (System.currentTimeMillis() - env.PIPELINE_START)
+                
+                // Print out detailed timing information
+                echo """
+                ========== Pipeline Timing Report ==========
+                Checkout Time:         ${env.CHECKOUT_TIME} ms
+                Build Time:            ${env.BUILD_TIME} ms
+                Docker Push Time:      ${env.PUSH_TIME} ms
+                EKS Deployment Time:   ${env.EKS_DEPLOY_TIME} ms
+                GKE Deployment Time:   ${env.GKE_DEPLOY_TIME} ms
+                Total Pipeline Time:   ${env.TOTAL_PIPELINE_TIME} ms
+                
+                Detailed Breakdown:
+                - Checkout: ${env.CHECKOUT_TIME} ms
+                - Docker Build: ${env.BUILD_TIME} ms
+                - Docker Push: ${env.PUSH_TIME} ms
+                - EKS Deploy: ${env.EKS_DEPLOY_TIME} ms
+                - GKE Deploy: ${env.GKE_DEPLOY_TIME} ms
+                ==========================================
+                """
+                
+                // Optional: You can add additional actions like sending a timing report via email
+            }
+            echo 'Deployment successful to both EKS and GKE!'
+        }
         always {
-            echo "Pipeline Completed!"
+            script {
+                // Ensure pipeline start time is captured at the beginning of the pipeline
+                env.PIPELINE_START = env.PIPELINE_START ?: System.currentTimeMillis()
+            }
+        }
+        failure {
+            echo 'Deployment failed. Check the logs for details.'
         }
     }
 }
