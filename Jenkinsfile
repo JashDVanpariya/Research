@@ -5,7 +5,7 @@ pipeline {
         EKS_CONTEXT = 'arn:aws:eks:eu-west-1:920373010296:cluster/eks-cluster' // EKS cluster context
         GKE_CONTEXT = 'gke_gold-circlet-439215-k9_europe-west1-b_gke-cluster' // GKE cluster context
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml' // EKS deployment file
-        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml' // GKE deployment file
+        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml' // GKE deployment file        
         PATH = "/var/jenkins_home/bin:${env.PATH}" // Add kubectl directory to global PATH
     }
     triggers {
