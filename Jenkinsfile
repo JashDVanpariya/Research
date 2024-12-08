@@ -6,6 +6,7 @@ pipeline {
         GKE_CONTEXT = 'gke_gold-circlet-439215-k9_europe-west1-b_gke-cluster' // GKE cluster context
         EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml' // EKS deployment file
         GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml' // GKE deployment file
+        PATH = "/var/jenkins_home/bin:${env.PATH}" // Add kubectl directory to global PATH
     }
     triggers {
         pollSCM('* * * * *') // Check for changes every minute
@@ -17,9 +18,8 @@ pipeline {
                 echo "Installing kubectl..."
                 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
-                mkdir -p $HOME/bin
-                mv kubectl $HOME/bin/
-                export PATH=$HOME/bin:$PATH
+                mkdir -p /var/jenkins_home/bin
+                mv kubectl /var/jenkins_home/bin/
                 kubectl version --client
                 '''
             }
