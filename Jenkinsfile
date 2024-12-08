@@ -1,15 +1,15 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = 'sledgy/webapp:latest' // Docker Hub image
-        EKS_CONTEXT = 'arn:aws:eks:eu-west-1:920373010296:cluster/eks-cluster' // EKS cluster context
-        GKE_CONTEXT = 'gke_gold-circlet-439215-k9_europe-west1-b_gke-cluster' // GKE cluster context
-        EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml' // EKS deployment file
-        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml' // GKE deployment file        
-        PATH = "/var/jenkins_home/bin:${env.PATH}" // Add kubectl directory to global PATH
+        DOCKER_IMAGE = 'sledgy/webapp:latest'
+        EKS_CONTEXT = 'arn:aws:eks:eu-west-1:920373010296:cluster/eks-cluster'
+        GKE_CONTEXT = 'gke_gold-circlet-439215-k9_europe-west1-b_gke-cluster'
+        EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
+        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
+        PATH = "/var/jenkins_home/bin:${env.PATH}"
     }
     triggers {
-        pollSCM('* * * * *') // Check for changes every minute
+        pollSCM('* * * * *')
     }
     stages {
         stage('Install kubectl') {
@@ -38,10 +38,9 @@ pipeline {
         }
         stage('Setup Kubeconfig') {
             steps {
-                withCredentials([string(credentialsId: 'KUBE_CONFIG', variable: 'KUBECONFIG_CONTENT')]) {
+                withCredentials([file(credentialsId: 'KUBE_CONFIG', variable: 'KUBECONFIG_FILE')]) {
                     sh '''
-                      echo "$KUBECONFIG_CONTENT" > kubeconfig            
-                      export KUBECONFIG=`pwd`/kubeconfig
+                      export KUBECONFIG=$KUBECONFIG_FILE
                       kubectl config get-contexts
                     '''
                 }
@@ -52,7 +51,7 @@ pipeline {
                 script {
                     echo "Deploying to EKS..."
                     sh '''
-                    export KUBECONFIG=`pwd`/kubeconfig
+                    export KUBECONFIG=$KUBECONFIG_FILE
                     kubectl config use-context ${EKS_CONTEXT}
                     kubectl apply -f ${EKS_DEPLOYMENT_FILE}
                     kubectl rollout status deployment/webapp --timeout=60s || kubectl describe deployment/webapp
@@ -65,7 +64,7 @@ pipeline {
                 script {
                     echo "Deploying to GKE..."
                     sh '''
-                    export KUBECONFIG=`pwd`/kubeconfig
+                    export KUBECONFIG=$KUBECONFIG_FILE
                     kubectl config use-context ${GKE_CONTEXT}
                     kubectl apply -f ${GKE_DEPLOYMENT_FILE}
                     kubectl rollout status deployment/my-app --timeout=60s || kubectl describe deployment/my-app
@@ -89,4 +88,3 @@ pipeline {
         }
     }
 }
-          
