@@ -11,6 +11,17 @@ pipeline {
         pollSCM('* * * * *') // Check for changes every minute
     }
     stages {
+        stage('Install kubectl') {
+            steps {
+                sh '''
+                echo "Installing kubectl..."
+                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                chmod +x kubectl
+                mv kubectl /usr/local/bin/
+                kubectl version --client
+                '''
+            }
+        }
         stage('Start Timer') {
             steps {
                 script {
