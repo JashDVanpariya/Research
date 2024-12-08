@@ -38,7 +38,7 @@ pipeline {
         }
         stage('Setup Kubeconfig') {
             steps {
-                withCredentials([file(credentialsId: 'MY_KUBE_CONFIG', variable: 'KUBECONFIG_FILE')]) {
+                withCredentials([file(credentialsId: 'KUBE_CONFIG', variable: 'KUBECONFIG_FILE')]) {
                     sh '''
                       cp $KUBECONFIG_FILE kubeconfig
                       kubectl --kubeconfig=kubeconfig config get-contexts
