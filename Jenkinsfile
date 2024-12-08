@@ -1,90 +1,65 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = 'sledgy/webapp:latest'
-        EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml'
-        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml'
-        KUBECTL_PATH = './kubectl'
-        AWS_CLI_PATH = './aws-cli/bin/aws'
+        DOCKER_IMAGE = 'sledgy/webapp:latest' // Docker Hub image
+        EKS_CONTEXT = 'arn:aws:eks:eu-west-1:920373010296:cluster/eks-cluster' // EKS cluster context
+        GKE_CONTEXT = 'gke_gold-circlet-439215-k9_europe-west1-b_gke-cluster' // GKE cluster context
+        EKS_DEPLOYMENT_FILE = 'eks-deployment.yaml' // EKS deployment file
+        GKE_DEPLOYMENT_FILE = 'gke-deployment.yaml' // GKE deployment file
+    }
+    triggers {
+        pollSCM('* * * * *') // Check for changes every minute
     }
     stages {
-        stage('Install Required Tools') {
+        stage('Start Timer') {
             steps {
                 script {
-                    echo "Installing kubectl, GKE auth plugin, and AWS CLI..."
-                    sh '''
-                        # Install kubectl
-                        curl -LO "https://storage.googleapis.com/kubernetes-release/release/v1.20.5/bin/linux/amd64/kubectl"
-                        chmod +x kubectl
-
-                        # Install GKE auth plugin
-                        curl -LO https://storage.googleapis.com/artifacts.k8s.io/binaries/kubernetes-client-go-auth-gcp/release/latest/gke-gcloud-auth-plugin
-                        chmod +x gke-gcloud-auth-plugin
-
-                        # Install AWS CLI in a local directory
-                        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
-                        unzip -qo awscliv2.zip
-                        ./aws/install --install-dir ./aws-cli --bin-dir ./aws-cli/bin
-                    '''
-
-                    echo "Verifying AWS CLI installation..."
-                    sh './aws-cli/bin/aws --version'
+                    env.START_TIME = System.currentTimeMillis()
                 }
             }
         }
-
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/JashDVanpariya/Research.git'
+                checkout scm
             }
         }
-
         stage('Deploy to EKS') {
             steps {
-                withCredentials([[ 
-                    $class: 'AmazonWebServicesCredentialsBinding', 
-                    credentialsId: 'aws-credentials-id' // Replace with your credentialsId
-                ]]) {
-                    script {
-                        echo "Configuring AWS CLI and Deploying to EKS..."
-                        sh '''
-                            # Configure AWS CLI to access EKS
-                            ${AWS_CLI_PATH} eks update-kubeconfig --region your-region --name your-cluster-name
-
-                            # Deploy application
-                            sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${EKS_DEPLOYMENT_FILE}
-                            ./kubectl apply -f ${EKS_DEPLOYMENT_FILE}
-                            ./kubectl rollout status deployment/webapp
-                        '''
-                    }
+                script {
+                    echo "Deploying to EKS..."
+                    sh '''
+                    kubectl config use-context ${EKS_CONTEXT}
+                    kubectl apply -f ${EKS_DEPLOYMENT_FILE}
+                    kubectl rollout status deployment/webapp --timeout=60s || kubectl describe deployment/webapp
+                    '''
                 }
             }
         }
-
         stage('Deploy to GKE') {
             steps {
-                withKubeConfig(credentialsId: 'gke-kubeconfig') {
-                    script {
-                        echo "Deploying to GKE..."
-                        sh '''
-                            sed -i 's|sledgy/webapp:latest|${DOCKER_IMAGE}|g' ${GKE_DEPLOYMENT_FILE}
-                            ./kubectl apply -f ${GKE_DEPLOYMENT_FILE}
-                            ./kubectl rollout status deployment/my-app
-                        '''
-                    }
+                script {
+                    echo "Deploying to GKE..."
+                    sh '''
+                    kubectl config use-context ${GKE_CONTEXT}
+                    kubectl apply -f ${GKE_DEPLOYMENT_FILE}
+                    kubectl rollout status deployment/my-app --timeout=60s || kubectl describe deployment/my-app
+                    '''
+                }
+            }
+        }
+        stage('End Timer and Calculate Time') {
+            steps {
+                script {
+                    def END_TIME = System.currentTimeMillis()
+                    def TOTAL_TIME = (END_TIME - START_TIME) / 1000
+                    echo "Total Build and Deployment Time: ${TOTAL_TIME} seconds"
                 }
             }
         }
     }
     post {
         always {
-            echo "Pipeline execution completed!"
-        }
-        success {
-            echo "Pipeline completed successfully!"
-        }
-        failure {
-            echo "Pipeline failed. Please check the logs."
+            echo "Pipeline Completed!"
         }
     }
 }
