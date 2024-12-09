@@ -27,8 +27,8 @@ pipeline {
 
         stage('Deploy to EKS') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
+                withCredentials([[ 
+                    $class: 'AmazonWebServicesCredentialsBinding', 
                     credentialsId: 'AWS_CREDENTIALS' // Replace with your AWS credentials ID
                 ]]) {
                     script {
@@ -38,7 +38,6 @@ pipeline {
                         sh """
                             aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
                             kubectl apply -f eks-deployment.yaml
-                           
                         """
                         
                         def deployEnd = System.currentTimeMillis()
@@ -55,12 +54,12 @@ pipeline {
                     script {
                         def deployStart = System.currentTimeMillis()
                         
-                        // Configure kubectl for GKE and deploy
+                        // Install gke-gcloud-auth-plugin if not already installed
                         sh """
+                            gcloud components install gke-gcloud-auth-plugin --quiet
                             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                             gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GCP_ZONE --project $GCP_PROJECT_ID
                             kubectl apply -f gke-deployment.yaml
-                            
                         """
                         
                         def deployEnd = System.currentTimeMillis()
