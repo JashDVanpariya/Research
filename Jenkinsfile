@@ -38,7 +38,7 @@ pipeline {
                         sh """
                             aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
                             kubectl apply -f eks-deployment.yaml
-                            kubectl apply -f eks-service.yaml
+                            
                         """
                         
                         def deployEnd = System.currentTimeMillis()
@@ -60,7 +60,7 @@ pipeline {
                             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                             gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GCP_ZONE --project $GCP_PROJECT_ID
                             kubectl apply -f gke-deployment.yaml
-                            kubectl apply -f gke-service.yaml
+                           
                         """
                         
                         def deployEnd = System.currentTimeMillis()
