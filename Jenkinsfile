@@ -16,7 +16,6 @@ pipeline {
                 script {
                     def buildStart = System.currentTimeMillis()
                     
-                    // Skipping actual Docker build since the image is pre-built
                     echo "Skipping build as we're using pre-built Docker image: $DOCKER_IMAGE"
                     
                     def buildEnd = System.currentTimeMillis()
@@ -28,37 +27,46 @@ pipeline {
 
         stage('Deploy to EKS') {
             steps {
-                script {
-                    def deployStart = System.currentTimeMillis()
-                    
-                    // Configure kubectl for EKS and deploy
-                    sh """
-                        aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
-                        kubectl apply -f eks-deployment.yaml
-                    """
-                    
-                    def deployEnd = System.currentTimeMillis()
-                    def deployDuration = (deployEnd - deployStart) / 1000
-                    echo "EKS Deployment Time: ${deployDuration} seconds"
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'AWS_CREDENTIALS' // Replace with your AWS credentials ID
+                ]]) {
+                    script {
+                        def deployStart = System.currentTimeMillis()
+                        
+                        // Configure kubectl for EKS and deploy
+                        sh """
+                            aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+                            kubectl apply -f eks-deployment.yaml
+                            kubectl apply -f eks-service.yaml
+                        """
+                        
+                        def deployEnd = System.currentTimeMillis()
+                        def deployDuration = (deployEnd - deployStart) / 1000
+                        echo "EKS Deployment Time: ${deployDuration} seconds"
+                    }
                 }
             }
         }
 
         stage('Deploy to GKE') {
             steps {
-                script {
-                    def deployStart = System.currentTimeMillis()
-                    
-                    // Configure kubectl for GKE and deploy
-                    sh """
-                        gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GCP_ZONE --project $GCP_PROJECT_ID
-                        kubectl apply -f gke-deployment.yaml
-                       
-                    """
-                    
-                    def deployEnd = System.currentTimeMillis()
-                    def deployDuration = (deployEnd - deployStart) / 1000
-                    echo "GKE Deployment Time: ${deployDuration} seconds"
+                withCredentials([file(credentialsId: 'GCP_CREDENTIALS', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    script {
+                        def deployStart = System.currentTimeMillis()
+                        
+                        // Configure kubectl for GKE and deploy
+                        sh """
+                            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                            gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GCP_ZONE --project $GCP_PROJECT_ID
+                            kubectl apply -f gke-deployment.yaml
+                            kubectl apply -f gke-service.yaml
+                        """
+                        
+                        def deployEnd = System.currentTimeMillis()
+                        def deployDuration = (deployEnd - deployStart) / 1000
+                        echo "GKE Deployment Time: ${deployDuration} seconds"
+                    }
                 }
             }
         }
