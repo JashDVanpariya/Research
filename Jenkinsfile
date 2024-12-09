@@ -54,9 +54,10 @@ pipeline {
                     script {
                         def deployStart = System.currentTimeMillis()
                         
-                        // Install gke-gcloud-auth-plugin if not already installed
+                        // Install gke-gcloud-auth-plugin using apt
                         sh """
-                            gcloud components install gke-gcloud-auth-plugin --quiet
+                            sudo apt-get update
+                            sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin
                             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                             gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GCP_ZONE --project $GCP_PROJECT_ID
                             kubectl apply -f gke-deployment.yaml
