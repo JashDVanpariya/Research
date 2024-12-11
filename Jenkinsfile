@@ -21,7 +21,7 @@ pipeline {
                     def buildEnd = System.currentTimeMillis()
                     def buildDuration = (buildEnd - buildStart) / 1000
                     echo "Build Time: ${buildDuration} seconds"
-                }
+                }          
             }
         }
 
@@ -29,12 +29,12 @@ pipeline {
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'AWS_CREDENTIALS' // Replace with your AWS credentials ID
+                    credentialsId: 'AWS_CREDENTIALS' 
                 ]]) {
                     script {
                         def deployStart = System.currentTimeMillis()
                         
-                        // Configure kubectl for EKS and deploy
+                       
                         sh """
                             aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
                             kubectl apply -f eks-deployment.yaml
@@ -55,7 +55,7 @@ pipeline {
                     script {
                         def deployStart = System.currentTimeMillis()
                         
-                        // Configure kubectl for GKE and deploy
+                        
                         sh """
                             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                             gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GCP_ZONE --project $GCP_PROJECT_ID
