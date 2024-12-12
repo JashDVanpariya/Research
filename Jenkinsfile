@@ -60,7 +60,7 @@ pipeline {
                             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
                             gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GCP_ZONE --project $GCP_PROJECT_ID
                             kubectl apply -f gke-deployment.yaml
-                           
+                                             
                         """
                         
                         def deployEnd = System.currentTimeMillis()
