@@ -16,7 +16,7 @@ pipeline {
                 script {
                     def buildStart = System.currentTimeMillis()
                     
-                    echo "Skipping build as we're using pre-built Docker image: $DOCKER_IMAGE"
+                   // echo "Skipping build as we're using pre-built Docker image: $DOCKER_IMAGE"
                     
                     def buildEnd = System.currentTimeMillis()
                     def buildDuration = (buildEnd - buildStart) / 1000
