@@ -64,7 +64,7 @@ pipeline {
                         """
                         
                         def deployEnd = System.currentTimeMillis()
-                        def deployDuration = (deployEnd - deployStart) / 1000
+                        def deployDuration = (deployEnd - deployStart) / 1000        
                         echo "GKE Deployment Time: ${deployDuration} seconds"
                     }
                 }
